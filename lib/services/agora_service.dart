@@ -24,14 +24,14 @@ class AgoraService {
       _engine = createAgoraRtcEngine();
       await _engine.initialize(RtcEngineContext(
         appId: agoraAppId,
-        channelProfile: ChannelProfileType.liveBroadcasting,
+        channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
       ));
 
       // Setup event listeners
       _engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (connection, elapsed) {
-            _localUid = connection.localUid;
+            _localUid = connection.localUid ?? 0;
             onConnectionStateChanged?.call('Joined channel');
           },
           onUserJoined: (connection, remoteUid, elapsed) {
@@ -67,8 +67,8 @@ class AgoraService {
     try {
       await _engine.setClientRole(
         role: isBroadcaster
-            ? ClientRoleType.broadcaster
-            : ClientRoleType.audience,
+            ? ClientRoleType.clientRoleBroadcaster
+            : ClientRoleType.clientRoleAudience,
       );
 
       await _engine.enableVideo();
@@ -76,9 +76,9 @@ class AgoraService {
 
       await _engine.joinChannel(
         token: '',
-        channelName: channelName,
+        channelId: channelName,
         uid: 0,
-        options: const RtcChannelMediaOptions(
+        options: ChannelMediaOptions(
           autoSubscribeAudio: true,
           autoSubscribeVideo: true,
           publishCameraTrack: isBroadcaster,
@@ -103,15 +103,15 @@ class AgoraService {
       await _engine.startRtmpStreamWithTranscoding(
         url: '', // Will be set by RTMP service
         transcoding: LiveTranscoding(
-          videoCodecProfile: VideoCodecProfileType.main,
+          videoCodecProfile: VideoCodecProfileType.videoCodecProfileMain,
           width: 360,
           height: 640,
-          bitrate: 1000,
-          frameRate: 30,
+          videoBitrate: 1000,
+          videoFramerate: 30,
           audioChannels: 2,
           audioBitrate: 48,
-          audioSampleRate: AudioSampleRateType.asr48000,
-          users: [
+          audioSampleRate: AudioSampleRateType.audioSampleRate48000,
+          transcodingUsers: [
             TranscodingUser(
               uid: uid,
               x: 0,

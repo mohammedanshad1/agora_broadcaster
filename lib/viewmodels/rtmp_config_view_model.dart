@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/index.dart';
 import '../repositories/index.dart';
+import '../services/rtmp_service.dart';
 
 class RTMPConfigViewModel extends ChangeNotifier {
   final StreamRepository _repository;

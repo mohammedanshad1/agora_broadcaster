@@ -415,8 +415,8 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                       obscureText: true,
                     ),
                   ],
-                );
-              },
+                ),
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),

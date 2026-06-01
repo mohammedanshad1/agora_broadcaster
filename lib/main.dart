@@ -19,14 +19,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Agora Live Broadcaster',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: _buildProviders(
-        child: const _AppRouter(),
-      ),
+      home: _buildProviders(child: const _AppRouter()),
     );
   }
 
@@ -34,42 +33,49 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // Services
-        Provider(
-          create: (_) => AgoraService(agoraAppId: agoraAppId),
-        ),
-        Provider(
-          create: (_) => RTMPService(),
-        ),
-        Provider(
-          create: (_) => PermissionService(),
-        ),
+        Provider(create: (_) => AgoraService(agoraAppId: agoraAppId)),
+        Provider(create: (_) => RTMPService()),
+        Provider(create: (_) => PermissionService()),
         // Repository
-        ProxyProvider3<AgoraService, RTMPService, PermissionService,
-            StreamRepository>(
-          create: (context) => StreamRepository(
-            agoraService: context.read<AgoraService>(),
-            rtmpService: context.read<RTMPService>(),
-            permissionService: context.read<PermissionService>(),
-          ),
-          update: (_, agoraService, rtmpService, permissionService, repo) =>
-              repo ?? StreamRepository(
-            agoraService: agoraService,
-            rtmpService: rtmpService,
-            permissionService: permissionService,
-          ),
+        ProxyProvider3<
+          AgoraService,
+          RTMPService,
+          PermissionService,
+          StreamRepository
+        >(
+          create:
+              (context) => StreamRepository(
+                agoraService: context.read<AgoraService>(),
+                rtmpService: context.read<RTMPService>(),
+                permissionService: context.read<PermissionService>(),
+              ),
+          update:
+              (_, agoraService, rtmpService, permissionService, repo) =>
+                  repo ??
+                  StreamRepository(
+                    agoraService: agoraService,
+                    rtmpService: rtmpService,
+                    permissionService: permissionService,
+                  ),
         ),
         // ViewModels
         ChangeNotifierProxyProvider<StreamRepository, LiveStreamViewModel>(
-          create: (context) =>
-              LiveStreamViewModel(repository: context.read<StreamRepository>()),
-          update: (context, repository, previous) =>
-              previous ?? LiveStreamViewModel(repository: repository),
+          create:
+              (context) => LiveStreamViewModel(
+                repository: context.read<StreamRepository>(),
+              ),
+          update:
+              (context, repository, previous) =>
+                  previous ?? LiveStreamViewModel(repository: repository),
         ),
         ChangeNotifierProxyProvider<StreamRepository, RTMPConfigViewModel>(
-          create: (context) =>
-              RTMPConfigViewModel(repository: context.read<StreamRepository>()),
-          update: (context, repository, previous) =>
-              previous ?? RTMPConfigViewModel(repository: repository),
+          create:
+              (context) => RTMPConfigViewModel(
+                repository: context.read<StreamRepository>(),
+              ),
+          update:
+              (context, repository, previous) =>
+                  previous ?? RTMPConfigViewModel(repository: repository),
         ),
       ],
       child: child,

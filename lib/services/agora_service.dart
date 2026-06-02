@@ -10,18 +10,24 @@ class AgoraService extends ChangeNotifier {
   bool _isInitialized = false;
   bool _isCameraEnabled = false;
   bool _isInitializing = false;
+  List<int> _remoteUsers = [];
+  String? _currentChannelId; // ✅ track current channel
 
   // Callbacks
   Function(int)? onUserJoined;
   Function(int)? onUserOffline;
   Function(String)? onConnectionStateChanged;
   Function(StreamError)? onError;
+  Function(int)? onRemoteUserJoined;
+  Function(int)? onRemoteUserLeft;
 
   AgoraService({required this.agoraAppId});
 
   bool get isInitialized => _isInitialized;
   bool get isInitializing => _isInitializing;
   int get localUid => _localUid;
+  List<int> get remoteUsers => List.unmodifiable(_remoteUsers);
+  String? get currentChannelId => _currentChannelId;
 
   RtcEngine getRtcEngine() {
     if (_engine == null) {
@@ -45,21 +51,52 @@ class AgoraService extends ChangeNotifier {
         ),
       );
 
-      // Setup event listeners
       _engine!.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (connection, elapsed) {
             _localUid = connection.localUid ?? 0;
+            _currentChannelId = connection.channelId;
+            print(
+              '✅ Joined channel: ${connection.channelId} as uid: $_localUid',
+            );
             onConnectionStateChanged?.call('Joined channel');
             notifyListeners();
           },
           onUserJoined: (connection, remoteUid, elapsed) {
+            print(
+              '✅ Remote user $remoteUid joined channel ${connection.channelId}',
+            );
+            if (!_remoteUsers.contains(remoteUid)) {
+              _remoteUsers.add(remoteUid);
+            }
+            onRemoteUserJoined?.call(remoteUid);
             onUserJoined?.call(remoteUid);
+            notifyListeners();
           },
           onUserOffline: (connection, remoteUid, reason) {
+            print('❌ Remote user $remoteUid left: $reason');
+            _remoteUsers.remove(remoteUid);
+            onRemoteUserLeft?.call(remoteUid);
             onUserOffline?.call(remoteUid);
+            notifyListeners();
+          },
+          onRemoteVideoStateChanged: (
+            connection,
+            remoteUid,
+            state,
+            reason,
+            elapsed,
+          ) {
+            // ✅ fires when host video starts/stops — useful for debugging
+            print(
+              '📹 Remote video state changed: uid=$remoteUid state=$state reason=$reason',
+            );
+          },
+          onConnectionStateChanged: (connection, state, reason) {
+            print('🔗 Connection state: $state reason: $reason');
           },
           onError: (err, msg) {
+            print('🔴 Agora error: $err — $msg');
             onError?.call(
               StreamError(
                 type: StreamErrorType.agoraConnectionFailed,
@@ -69,7 +106,7 @@ class AgoraService extends ChangeNotifier {
             );
           },
           onCameraReady: () {
-            print('Camera is ready');
+            print('📷 Camera is ready');
             onConnectionStateChanged?.call('Camera ready');
             notifyListeners();
           },
@@ -81,6 +118,7 @@ class AgoraService extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _isInitializing = false;
+      print('🔴 Agora init failed: $e');
       onError?.call(
         StreamError(
           type: StreamErrorType.unknownError,
@@ -101,7 +139,6 @@ class AgoraService extends ChangeNotifier {
     }
 
     try {
-      // Set client role first
       await _engine!.setClientRole(
         role:
             isBroadcaster
@@ -109,14 +146,15 @@ class AgoraService extends ChangeNotifier {
                 : ClientRoleType.clientRoleAudience,
       );
 
-      // Enable video for broadcaster
       if (isBroadcaster) {
         await _enableCameraAndMicrophone();
+      } else {
+        // ✅ Audience still needs video module enabled to RENDER remote video
+        await _engine!.enableVideo();
       }
 
-      // Join channel with correct media options
       await _engine!.joinChannel(
-        token: '', // For testing without token, leave empty
+        token: '', // Add token for production
         channelId: channelName,
         uid: 0,
         options: ChannelMediaOptions(
@@ -124,12 +162,18 @@ class AgoraService extends ChangeNotifier {
           autoSubscribeVideo: true,
           publishCameraTrack: isBroadcaster,
           publishMicrophoneTrack: isBroadcaster,
+          // ✅ Explicitly set role in options too
+          clientRoleType:
+              isBroadcaster
+                  ? ClientRoleType.clientRoleBroadcaster
+                  : ClientRoleType.clientRoleAudience,
         ),
       );
 
       onConnectionStateChanged?.call('Broadcasting started');
       notifyListeners();
     } catch (e) {
+      print('🔴 startBroadcasting error: $e');
       onError?.call(
         StreamError(
           type: StreamErrorType.agoraConnectionFailed,
@@ -142,16 +186,10 @@ class AgoraService extends ChangeNotifier {
 
   Future<void> _enableCameraAndMicrophone() async {
     try {
-      // Enable video module
       await _engine!.enableVideo();
-
-      // Enable local video
       await _engine!.enableLocalVideo(true);
-
-      // Enable local audio
       await _engine!.enableLocalAudio(true);
 
-      // Set video encoder configuration for better quality
       await _engine!.setVideoEncoderConfiguration(
         const VideoEncoderConfiguration(
           dimensions: VideoDimensions(width: 720, height: 1280),
@@ -161,20 +199,70 @@ class AgoraService extends ChangeNotifier {
         ),
       );
 
-      // Setup local video for preview
       await _engine!.setupLocalVideo(
         const VideoCanvas(uid: 0, renderMode: RenderModeType.renderModeHidden),
       );
 
-      // Start preview after enabling video
       await _engine!.startPreview();
       _isCameraEnabled = true;
 
       onConnectionStateChanged?.call('Camera and microphone enabled');
       notifyListeners();
     } catch (e) {
-      print('Error enabling camera: $e');
+      print('🔴 Error enabling camera: $e');
       rethrow;
+    }
+  }
+
+  Future<void> setupRemoteVideo(int uid) async {
+    if (_engine == null) return;
+
+    try {
+      // ✅ Use renderModeFit so video fills the view correctly
+      await _engine!.setupRemoteVideo(
+        VideoCanvas(uid: uid, renderMode: RenderModeType.renderModeFit),
+      );
+      print('✅ Remote video setup for uid: $uid');
+    } catch (e) {
+      print('🔴 Error setting up remote video: $e');
+    }
+  }
+
+  Future<void> muteRemoteAudio(int uid, bool muted) async {
+    if (_engine == null) return;
+    try {
+      await _engine!.muteRemoteAudioStream(uid: uid, mute: muted);
+    } catch (e) {
+      print('Error muting remote audio: $e');
+    }
+  }
+
+  Future<void> addTranscodingUser({required int uid}) async {
+    try {
+      await _engine!.startRtmpStreamWithTranscoding(
+        url: '',
+        transcoding: LiveTranscoding(
+          videoCodecProfile: VideoCodecProfileType.videoCodecProfileMain,
+          width: 360,
+          height: 640,
+          videoBitrate: 1000,
+          videoFramerate: 30,
+          audioChannels: 2,
+          audioBitrate: 48,
+          audioSampleRate: AudioSampleRateType.audioSampleRate48000,
+          transcodingUsers: [
+            TranscodingUser(uid: uid, x: 0, y: 0, width: 360, height: 640),
+          ],
+        ),
+      );
+    } catch (e) {
+      onError?.call(
+        StreamError(
+          type: StreamErrorType.rtmpPushFailed,
+          message: 'Failed to add transcoding user',
+          details: e.toString(),
+        ),
+      );
     }
   }
 
@@ -188,6 +276,8 @@ class AgoraService extends ChangeNotifier {
       }
 
       await _engine?.leaveChannel();
+      _remoteUsers.clear();
+      _currentChannelId = null;
       notifyListeners();
     } catch (e) {
       onError?.call(
@@ -239,6 +329,8 @@ class AgoraService extends ChangeNotifier {
       await _engine?.release();
       _isInitialized = false;
       _isCameraEnabled = false;
+      _remoteUsers.clear();
+      _currentChannelId = null;
       _engine = null;
     } catch (e) {
       // Ignore errors during dispose

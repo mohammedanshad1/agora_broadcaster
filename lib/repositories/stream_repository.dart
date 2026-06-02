@@ -7,10 +7,6 @@ class StreamRepository {
   final AgoraService _agoraService;
   final RTMPService _rtmpService;
   final PermissionService _permissionService;
-  // Add this to StreamRepository class
-  bool get isAgoraInitialized {
-    return _agoraService.isInitialized;
-  }
 
   LiveStreamSession? _currentSession;
   final List<RTMPStreamConfig> _rtmpConfigs = [];
@@ -162,6 +158,26 @@ class StreamRepository {
 
   RtcEngine getRtcEngine() {
     return _agoraService.getRtcEngine();
+  }
+
+  bool get isAgoraInitialized {
+    return _agoraService.isInitialized;
+  }
+
+  List<int> get remoteUsers {
+    return _agoraService.remoteUsers;
+  }
+
+  Future<void> setupRemoteVideo(int uid) async {
+    await _agoraService.setupRemoteVideo(uid);
+  }
+
+  void setRemoteUserCallbacks({
+    Function(int)? onUserJoined,
+    Function(int)? onUserLeft,
+  }) {
+    _agoraService.onRemoteUserJoined = onUserJoined;
+    _agoraService.onRemoteUserLeft = onUserLeft;
   }
 
   void dispose() {

@@ -4,24 +4,23 @@ import 'dart:async';
 class SplashScreen extends StatefulWidget {
   final VoidCallback onInitializationComplete;
 
-  const SplashScreen({
-    super.key,
-    required this.onInitializationComplete,
-  });
+  const SplashScreen({super.key, required this.onInitializationComplete});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -44,13 +43,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _animationController.forward();
 
     // Navigate away after 3 seconds
-    Timer(const Duration(seconds: 3), () {
-      widget.onInitializationComplete();
+    _timer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        widget.onInitializationComplete();
+      }
     });
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _animationController.dispose();
     super.dispose();
   }
@@ -75,10 +77,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           builder: (context, child) {
             return FadeTransition(
               opacity: _fadeAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: child,
-              ),
+              child: ScaleTransition(scale: _scaleAnimation, child: child),
             );
           },
           child: Column(
@@ -97,11 +96,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.stream,
-                  size: 100,
-                  color: Colors.white,
-                ),
+                child: const Icon(Icons.stream, size: 100, color: Colors.white),
               ),
               const SizedBox(height: 32),
               const Text(

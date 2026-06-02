@@ -1,5 +1,5 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import '../models/index.dart';
 import '../repositories/index.dart';
 import '../services/index.dart';
@@ -12,31 +12,35 @@ class LiveStreamViewModel extends ChangeNotifier {
     message: 'Ready to start streaming',
   );
 
-  // Add this to LiveStreamViewModel class
-  bool get isAgoraInitialized {
-    return _repository.isAgoraInitialized;
-  }
-
-  // Add this method to LiveStreamViewModel class
-  RtcEngine getRtcEngine() {
-    return _repository.getRtcEngine();
-  }
-
-  // Add this method to LiveStreamViewModel class
-  Future<void> initialize() async {
-    await _repository.initialize();
-  }
-
   LiveStreamSession? _currentSession;
   bool _isInitializing = false;
   String? _hostName;
   String? _streamTitle;
-
   StreamError? _lastError;
+
+  // Remote user callbacks for audience
+  Function(int)? onRemoteUserJoined;
+  Function(int)? onRemoteUserLeft;
 
   LiveStreamViewModel({required StreamRepository repository})
     : _repository = repository {
     _repository.requestAllPermissions();
+    _setupRemoteUserCallbacks();
+  }
+
+  void _setupRemoteUserCallbacks() {
+    _repository.setRemoteUserCallbacks(
+      onUserJoined: (uid) {
+        print('✅ ViewModel: remote user joined $uid');
+        onRemoteUserJoined?.call(uid);
+        notifyListeners();
+      },
+      onUserLeft: (uid) {
+        print('❌ ViewModel: remote user left $uid');
+        onRemoteUserLeft?.call(uid);
+        notifyListeners();
+      },
+    );
   }
 
   // Getters
@@ -45,8 +49,9 @@ class LiveStreamViewModel extends ChangeNotifier {
   bool get isInitializing => _isInitializing;
   bool get isLive => _streamStatus.type == StreamStatusType.live;
   StreamError? get lastError => _lastError;
+  bool get isAgoraInitialized => _repository.isAgoraInitialized;
+  List<int> get remoteUsers => _repository.remoteUsers;
 
-  // Setters for input
   void setHostName(String name) {
     _hostName = name;
     notifyListeners();
@@ -55,6 +60,10 @@ class LiveStreamViewModel extends ChangeNotifier {
   void setStreamTitle(String title) {
     _streamTitle = title;
     notifyListeners();
+  }
+
+  Future<void> initialize() async {
+    await _repository.initialize();
   }
 
   Future<void> startLiveStream({required bool isBroadcaster}) async {
@@ -73,14 +82,14 @@ class LiveStreamViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Check permissions
       final hasPermissions = await _repository.hasAllPermissions();
       if (!hasPermissions) {
         await _repository.requestAllPermissions();
       }
 
-      // Create session
-      final channelName = 'live_${DateTime.now().millisecondsSinceEpoch}';
+      // ✅ Use host name as channel so audience can type it
+      final channelName = _hostName!.toLowerCase().trim().replaceAll(' ', '_');
+
       await _repository.createLiveSession(
         hostName: _hostName!,
         title: _streamTitle ?? 'Live Stream',
@@ -88,7 +97,6 @@ class LiveStreamViewModel extends ChangeNotifier {
         agoraChannelName: channelName,
       );
 
-      // Start broadcasting
       await _repository.startBroadcasting(
         channelName: channelName,
         isBroadcaster: isBroadcaster,
@@ -97,7 +105,6 @@ class LiveStreamViewModel extends ChangeNotifier {
       _currentSession = _repository.currentSession;
       _setStatus(StreamStatusType.live, 'Live stream started');
 
-      // Start RTMP streams if any are configured
       if (isBroadcaster && _repository.getRtmpConfigs().isNotEmpty) {
         await _startRtmpStreams();
       }
@@ -109,10 +116,7 @@ class LiveStreamViewModel extends ChangeNotifier {
           details: e.toString(),
         ),
       );
-      _setStatus(
-        StreamStatusType.error,
-        'Failed to start live stream: ${e.toString()}',
-      );
+      _setStatus(StreamStatusType.error, 'Failed to start: ${e.toString()}');
     } finally {
       _isInitializing = false;
       notifyListeners();
@@ -136,7 +140,7 @@ class LiveStreamViewModel extends ChangeNotifier {
       );
       _setStatus(
         StreamStatusType.rtmpFailed,
-        'Failed to connect to platforms: ${e.toString()}',
+        'Failed to connect: ${e.toString()}',
       );
     }
     notifyListeners();
@@ -170,6 +174,55 @@ class LiveStreamViewModel extends ChangeNotifier {
     } finally {
       notifyListeners();
     }
+  }
+
+  // ✅ Fixed: creates session so currentSession is never null after joining
+  Future<void> joinAsAudience(String channelName) async {
+    _setStatus(StreamStatusType.initializing, 'Joining stream...');
+    notifyListeners();
+
+    try {
+      await _repository.startBroadcasting(
+        channelName: channelName,
+        isBroadcaster: false,
+      );
+
+      // ✅ Create a session so AudienceLiveScreen doesn't show empty state
+      await _repository.createLiveSession(
+        hostName: 'Host',
+        title: channelName,
+        isHost: false,
+        agoraChannelName: channelName,
+      );
+
+      _currentSession = _repository.currentSession;
+      _setStatus(StreamStatusType.live, 'Connected to stream');
+    } catch (e) {
+      _setError(
+        StreamError(
+          type: StreamErrorType.agoraConnectionFailed,
+          message: 'Failed to join stream',
+          details: e.toString(),
+        ),
+      );
+      _setStatus(StreamStatusType.error, 'Failed to join: ${e.toString()}');
+    }
+    notifyListeners();
+  }
+
+  Future<void> leaveAudience() async {
+    await _repository.stopBroadcasting();
+    _currentSession = null; // ✅ clear session on leave
+    _setStatus(StreamStatusType.idle, 'Left the stream');
+    notifyListeners();
+  }
+
+  Future<void> setupRemoteVideo(int uid) async {
+    await _repository.setupRemoteVideo(uid);
+  }
+
+  RtcEngine getRtcEngine() {
+    return _repository.getRtcEngine();
   }
 
   void _setStatus(StreamStatusType type, String message) {

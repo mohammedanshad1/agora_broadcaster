@@ -14,9 +14,14 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -25,7 +30,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6200EA),
-          brightness: Brightness.dark, // Changed to dark theme for better UI
+          brightness: Brightness.dark,
         ),
         useMaterial3: true,
       ),
@@ -36,15 +41,15 @@ class MyApp extends StatelessWidget {
   Widget _buildProviders({required Widget child}) {
     return MultiProvider(
       providers: [
-        // Services
+        // Services - Use lazy loading to avoid initialization issues
         ChangeNotifierProvider(
-          create:
-              (context) => AgoraService(agoraAppId: agoraAppId)..initialize(),
+          create: (context) => AgoraService(agoraAppId: agoraAppId),
+          lazy: false,
         ),
         Provider(create: (_) => RTMPService()),
         Provider(create: (_) => PermissionService()),
 
-        // Repository
+        // Repository - Use ProxyProvider to handle dependencies
         ProxyProvider3<
           AgoraService,
           RTMPService,
@@ -57,35 +62,29 @@ class MyApp extends StatelessWidget {
                 rtmpService: context.read<RTMPService>(),
                 permissionService: context.read<PermissionService>(),
               ),
-          update:
-              (_, agoraService, rtmpService, permissionService, repo) =>
-                  repo ??
-                  StreamRepository(
-                    agoraService: agoraService,
-                    rtmpService: rtmpService,
-                    permissionService: permissionService,
-                  ),
+          update: (_, agoraService, rtmpService, permissionService, previous) {
+            return previous ??
+                StreamRepository(
+                  agoraService: agoraService,
+                  rtmpService: rtmpService,
+                  permissionService: permissionService,
+                );
+          },
         ),
 
-        // ViewModels
-        ChangeNotifierProxyProvider<StreamRepository, LiveStreamViewModel>(
-          create:
-              (context) => LiveStreamViewModel(
-                repository: context.read<StreamRepository>(),
-              ),
-          update:
-              (_, repository, previous) =>
-                  previous ?? LiveStreamViewModel(repository: repository),
+        // ViewModels - Use ChangeNotifierProvider directly
+        ChangeNotifierProvider(
+          create: (context) {
+            final repository = context.read<StreamRepository>();
+            return LiveStreamViewModel(repository: repository);
+          },
         ),
 
-        ChangeNotifierProxyProvider<StreamRepository, RTMPConfigViewModel>(
-          create:
-              (context) => RTMPConfigViewModel(
-                repository: context.read<StreamRepository>(),
-              ),
-          update:
-              (_, repository, previous) =>
-                  previous ?? RTMPConfigViewModel(repository: repository),
+        ChangeNotifierProvider(
+          create: (context) {
+            final repository = context.read<StreamRepository>();
+            return RTMPConfigViewModel(repository: repository);
+          },
         ),
       ],
       child: child,
@@ -105,13 +104,27 @@ class _AppRouterState extends State<_AppRouter> {
   bool? _isBroadcaster;
 
   @override
+  void initState() {
+    super.initState();
+    // Initialize Agora after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final agoraService = context.read<AgoraService>();
+        agoraService.initialize();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (_showSplash) {
       return SplashScreen(
         onInitializationComplete: () {
-          setState(() {
-            _showSplash = false;
-          });
+          if (mounted) {
+            setState(() {
+              _showSplash = false;
+            });
+          }
         },
       );
     }
@@ -119,9 +132,11 @@ class _AppRouterState extends State<_AppRouter> {
     if (_isBroadcaster == null) {
       return HomeScreen(
         onRoleSelected: (isBroadcaster) {
-          setState(() {
-            _isBroadcaster = isBroadcaster;
-          });
+          if (mounted) {
+            setState(() {
+              _isBroadcaster = isBroadcaster;
+            });
+          }
         },
       );
     }
@@ -129,17 +144,21 @@ class _AppRouterState extends State<_AppRouter> {
     if (_isBroadcaster!) {
       return HostLiveScreen(
         onExit: () {
-          setState(() {
-            _isBroadcaster = null;
-          });
+          if (mounted) {
+            setState(() {
+              _isBroadcaster = null;
+            });
+          }
         },
       );
     } else {
       return AudienceLiveScreen(
         onExit: () {
-          setState(() {
-            _isBroadcaster = null;
-          });
+          if (mounted) {
+            setState(() {
+              _isBroadcaster = null;
+            });
+          }
         },
       );
     }

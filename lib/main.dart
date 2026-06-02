@@ -6,7 +6,7 @@ import 'services/index.dart';
 import 'viewmodels/index.dart';
 import 'views/index.dart';
 
-const String agoraAppId = 'YOUR_AGORA_APP_ID'; // Replace with your Agora App ID
+const String agoraAppId = 'dd522d50dc8945a38da60ba87d9da0e0'; // Replace with your Agora App ID
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

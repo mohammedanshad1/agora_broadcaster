@@ -75,7 +75,7 @@ class AgoraService {
       await _engine.startPreview();
 
       await _engine.joinChannel(
-        token: '',
+        token: '007eJxTYMjQmpidbX60PVGIa9Y8x7byq0J6rQc5V0svc1hYfCRAiV2BISXF1MgoxdQgJdnC0sQ00dgiJdHMICnRwjzFMiXRINXgWYFcVkMgI8PHlBksjAwQCOLzMJSkFpfEJ2ck5uWl5jAwAACBoiCn',
         channelId: channelName,
         uid: 0,
         options: ChannelMediaOptions(

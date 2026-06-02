@@ -6,7 +6,8 @@ import 'services/index.dart';
 import 'viewmodels/index.dart';
 import 'views/index.dart';
 
-const String agoraAppId = 'dd522d50dc8945a38da60ba87d9da0e0'; // Replace with your Agora App ID
+const String agoraAppId =
+    'dd522d50dc8945a38da60ba87d9da0e0'; // Your Agora App ID
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,10 +25,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6200EA),
-          brightness: Brightness.light,
+          brightness: Brightness.dark, // Changed to dark theme for better UI
         ),
         useMaterial3: true,
-        fontFamily: 'Inter', // Assuming Inter is available or fallback
       ),
       home: _buildProviders(child: const _AppRouter()),
     );
@@ -37,9 +37,13 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // Services
-        Provider(create: (_) => AgoraService(agoraAppId: agoraAppId)),
+        ChangeNotifierProvider(
+          create:
+              (context) => AgoraService(agoraAppId: agoraAppId)..initialize(),
+        ),
         Provider(create: (_) => RTMPService()),
         Provider(create: (_) => PermissionService()),
+
         // Repository
         ProxyProvider3<
           AgoraService,
@@ -62,6 +66,7 @@ class MyApp extends StatelessWidget {
                     permissionService: permissionService,
                   ),
         ),
+
         // ViewModels
         ChangeNotifierProxyProvider<StreamRepository, LiveStreamViewModel>(
           create:
@@ -69,16 +74,17 @@ class MyApp extends StatelessWidget {
                 repository: context.read<StreamRepository>(),
               ),
           update:
-              (context, repository, previous) =>
+              (_, repository, previous) =>
                   previous ?? LiveStreamViewModel(repository: repository),
         ),
+
         ChangeNotifierProxyProvider<StreamRepository, RTMPConfigViewModel>(
           create:
               (context) => RTMPConfigViewModel(
                 repository: context.read<StreamRepository>(),
               ),
           update:
-              (context, repository, previous) =>
+              (_, repository, previous) =>
                   previous ?? RTMPConfigViewModel(repository: repository),
         ),
       ],

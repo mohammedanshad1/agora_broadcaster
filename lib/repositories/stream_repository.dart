@@ -1,3 +1,5 @@
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+
 import '../models/index.dart';
 import '../services/index.dart';
 
@@ -5,6 +7,10 @@ class StreamRepository {
   final AgoraService _agoraService;
   final RTMPService _rtmpService;
   final PermissionService _permissionService;
+  // Add this to StreamRepository class
+  bool get isAgoraInitialized {
+    return _agoraService.isInitialized;
+  }
 
   LiveStreamSession? _currentSession;
   final List<RTMPStreamConfig> _rtmpConfigs = [];
@@ -13,9 +19,14 @@ class StreamRepository {
     required AgoraService agoraService,
     required RTMPService rtmpService,
     required PermissionService permissionService,
-  })  : _agoraService = agoraService,
-        _rtmpService = rtmpService,
-        _permissionService = permissionService;
+  }) : _agoraService = agoraService,
+       _rtmpService = rtmpService,
+       _permissionService = permissionService;
+
+  // Add initialization method
+  Future<void> initialize() async {
+    await _agoraService.initialize();
+  }
 
   // Permissions
   Future<bool> requestAllPermissions() =>
@@ -69,8 +80,9 @@ class StreamRepository {
   }
 
   void updateRtmpConfig(RTMPStreamConfig updatedConfig) {
-    final index =
-        _rtmpConfigs.indexWhere((config) => config.id == updatedConfig.id);
+    final index = _rtmpConfigs.indexWhere(
+      (config) => config.id == updatedConfig.id,
+    );
     if (index != -1) {
       _rtmpConfigs[index] = updatedConfig;
       if (_currentSession != null) {
@@ -148,7 +160,12 @@ class StreamRepository {
   RTMPStreamState? getRtmpStreamState(String configId) =>
       _rtmpService.getStreamState(configId);
 
+  RtcEngine getRtcEngine() {
+    return _agoraService.getRtcEngine();
+  }
+
   void dispose() {
     _rtmpService.clear();
+    _agoraService.dispose();
   }
 }

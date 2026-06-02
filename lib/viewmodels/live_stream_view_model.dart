@@ -1,3 +1,4 @@
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/foundation.dart';
 import '../models/index.dart';
 import '../repositories/index.dart';
@@ -11,6 +12,21 @@ class LiveStreamViewModel extends ChangeNotifier {
     message: 'Ready to start streaming',
   );
 
+  // Add this to LiveStreamViewModel class
+  bool get isAgoraInitialized {
+    return _repository.isAgoraInitialized;
+  }
+
+  // Add this method to LiveStreamViewModel class
+  RtcEngine getRtcEngine() {
+    return _repository.getRtcEngine();
+  }
+
+  // Add this method to LiveStreamViewModel class
+  Future<void> initialize() async {
+    await _repository.initialize();
+  }
+
   LiveStreamSession? _currentSession;
   bool _isInitializing = false;
   String? _hostName;
@@ -19,7 +35,7 @@ class LiveStreamViewModel extends ChangeNotifier {
   StreamError? _lastError;
 
   LiveStreamViewModel({required StreamRepository repository})
-      : _repository = repository {
+    : _repository = repository {
     _repository.requestAllPermissions();
   }
 
@@ -41,9 +57,7 @@ class LiveStreamViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> startLiveStream({
-    required bool isBroadcaster,
-  }) async {
+  Future<void> startLiveStream({required bool isBroadcaster}) async {
     if (_hostName == null || _hostName!.isEmpty) {
       _setError(
         StreamError(
@@ -88,11 +102,13 @@ class LiveStreamViewModel extends ChangeNotifier {
         await _startRtmpStreams();
       }
     } catch (e) {
-      _setError(StreamError(
-        type: StreamErrorType.agoraConnectionFailed,
-        message: 'Failed to start live stream',
-        details: e.toString(),
-      ));
+      _setError(
+        StreamError(
+          type: StreamErrorType.agoraConnectionFailed,
+          message: 'Failed to start live stream',
+          details: e.toString(),
+        ),
+      );
       _setStatus(
         StreamStatusType.error,
         'Failed to start live stream: ${e.toString()}',
@@ -109,16 +125,15 @@ class LiveStreamViewModel extends ChangeNotifier {
 
     try {
       await _repository.startAllRtmpStreams();
-      _setStatus(
-        StreamStatusType.rtmpConnected,
-        'Connected to all platforms',
-      );
+      _setStatus(StreamStatusType.rtmpConnected, 'Connected to all platforms');
     } catch (e) {
-      _setError(StreamError(
-        type: StreamErrorType.rtmpPushFailed,
-        message: 'Failed to connect to RTMP platforms',
-        details: e.toString(),
-      ));
+      _setError(
+        StreamError(
+          type: StreamErrorType.rtmpPushFailed,
+          message: 'Failed to connect to RTMP platforms',
+          details: e.toString(),
+        ),
+      );
       _setStatus(
         StreamStatusType.rtmpFailed,
         'Failed to connect to platforms: ${e.toString()}',
@@ -141,11 +156,13 @@ class LiveStreamViewModel extends ChangeNotifier {
       _hostName = null;
       _streamTitle = null;
     } catch (e) {
-      _setError(StreamError(
-        type: StreamErrorType.unknownError,
-        message: 'Failed to stop live stream',
-        details: e.toString(),
-      ));
+      _setError(
+        StreamError(
+          type: StreamErrorType.unknownError,
+          message: 'Failed to stop live stream',
+          details: e.toString(),
+        ),
+      );
       _setStatus(
         StreamStatusType.error,
         'Error stopping stream: ${e.toString()}',

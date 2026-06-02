@@ -242,7 +242,9 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
 
   Widget _buildLiveScreen(BuildContext context, LiveStreamViewModel viewModel) {
     return Scaffold(
+      backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: const Text(
           'Live Workspace',
@@ -284,6 +286,8 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
         ],
       ),
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -293,121 +297,150 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (viewModel.currentSession != null)
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight:
+                    MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.top -
+                    kToolbarHeight,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (viewModel.currentSession != null)
+                    _buildGlassCard(
+                      child: LiveStreamStatusWidget(
+                        session: viewModel.currentSession!,
+                      ),
+                    ),
+
+                  const SizedBox(height: 32),
+
+                  _buildSectionTitle('Stream Status', Icons.analytics_outlined),
+
+                  const SizedBox(height: 16),
+
                   _buildGlassCard(
-                    child: LiveStreamStatusWidget(
-                      session: viewModel.currentSession!,
-                    ),
-                  ),
-                const SizedBox(height: 32),
-                _buildSectionTitle('Stream Status', Icons.analytics_outlined),
-                const SizedBox(height: 16),
-                _buildGlassCard(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, color: Colors.blueAccent),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          viewModel.streamStatus.message,
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                _buildSectionTitle(
-                  'Platform Status',
-                  Icons.cloud_done_outlined,
-                ),
-                const SizedBox(height: 16),
-                Consumer<RTMPConfigViewModel>(
-                  builder: (context, rtmpVM, _) {
-                    final states = rtmpVM.streamStates;
-                    if (states.isEmpty) {
-                      return _buildGlassCard(
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(
-                            child: Text(
-                              'No platforms connected',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                    return Column(
-                      children:
-                          states.map((state) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _buildGlassCard(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                child: ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(
-                                    state.config.platformName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    state.statusText,
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  leading: _getStatusIcon(state.status),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                    );
-                  },
-                ),
-                const SizedBox(height: 48),
-                SizedBox(
-                  width: double.infinity,
-                  height: 60,
-                  child: ElevatedButton(
-                    onPressed: () => _showEndLiveDialog(context, viewModel),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white10,
-                      foregroundColor: Colors.redAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      side: const BorderSide(color: Colors.redAccent, width: 2),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    child: Row(
                       children: [
-                        Icon(Icons.stop_circle_outlined, size: 24),
-                        SizedBox(width: 12),
-                        Text(
-                          'END LIVE',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
+                        const Icon(
+                          Icons.info_outline,
+                          color: Colors.blueAccent,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            viewModel.streamStatus.message,
+                            style: const TextStyle(color: Colors.white70),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 32),
+
+                  _buildSectionTitle(
+                    'Platform Status',
+                    Icons.cloud_done_outlined,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Consumer<RTMPConfigViewModel>(
+                    builder: (context, rtmpVM, _) {
+                      final states = rtmpVM.streamStates;
+
+                      if (states.isEmpty) {
+                        return _buildGlassCard(
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: Text(
+                                'No platforms connected',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        children:
+                            states.map((state) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _buildGlassCard(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  child: ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(
+                                      state.config.platformName,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      state.statusText,
+                                      style: const TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    leading: _getStatusIcon(state.status),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: ElevatedButton(
+                      onPressed: () => _showEndLiveDialog(context, viewModel),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white10,
+                        foregroundColor: Colors.redAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        side: const BorderSide(
+                          color: Colors.redAccent,
+                          width: 2,
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.stop_circle_outlined, size: 24),
+                          SizedBox(width: 12),
+                          Text(
+                            'END LIVE',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ),

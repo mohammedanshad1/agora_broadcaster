@@ -66,6 +66,7 @@ class LiveStreamViewModel extends ChangeNotifier {
     await _repository.initialize();
   }
 
+  // In live_stream_viewmodel.dart
   Future<void> startLiveStream({required bool isBroadcaster}) async {
     if (_hostName == null || _hostName!.isEmpty) {
       _setError(
@@ -87,8 +88,9 @@ class LiveStreamViewModel extends ChangeNotifier {
         await _repository.requestAllPermissions();
       }
 
-      // ✅ Use host name as channel so audience can type it
       final channelName = _hostName!.toLowerCase().trim().replaceAll(' ', '_');
+
+      print('🎥 Starting live stream on channel: $channelName');
 
       await _repository.createLiveSession(
         hostName: _hostName!,
@@ -109,6 +111,7 @@ class LiveStreamViewModel extends ChangeNotifier {
         await _startRtmpStreams();
       }
     } catch (e) {
+      print('🔴 Error starting live stream: $e');
       _setError(
         StreamError(
           type: StreamErrorType.agoraConnectionFailed,
@@ -121,6 +124,42 @@ class LiveStreamViewModel extends ChangeNotifier {
       _isInitializing = false;
       notifyListeners();
     }
+  }
+
+  Future<void> joinAsAudience(String channelName) async {
+    _setStatus(StreamStatusType.initializing, 'Joining stream...');
+    notifyListeners();
+
+    try {
+      print('👥 Joining as audience on channel: $channelName');
+
+      await _repository.startBroadcasting(
+        channelName: channelName,
+        isBroadcaster: false,
+      );
+
+      await _repository.createLiveSession(
+        hostName: 'Host',
+        title: channelName,
+        isHost: false,
+        agoraChannelName: channelName,
+      );
+
+      _currentSession = _repository.currentSession;
+      _setStatus(StreamStatusType.live, 'Connected to stream');
+      print('✅ Audience successfully joined channel: $channelName');
+    } catch (e) {
+      print('🔴 Error joining as audience: $e');
+      _setError(
+        StreamError(
+          type: StreamErrorType.agoraConnectionFailed,
+          message: 'Failed to join stream',
+          details: e.toString(),
+        ),
+      );
+      _setStatus(StreamStatusType.error, 'Failed to join: ${e.toString()}');
+    }
+    notifyListeners();
   }
 
   Future<void> _startRtmpStreams() async {
@@ -176,39 +215,39 @@ class LiveStreamViewModel extends ChangeNotifier {
     }
   }
 
-  // ✅ Fixed: creates session so currentSession is never null after joining
-  Future<void> joinAsAudience(String channelName) async {
-    _setStatus(StreamStatusType.initializing, 'Joining stream...');
-    notifyListeners();
+  // // ✅ Fixed: creates session so currentSession is never null after joining
+  // Future<void> joinAsAudience(String channelName) async {
+  //   _setStatus(StreamStatusType.initializing, 'Joining stream...');
+  //   notifyListeners();
 
-    try {
-      await _repository.startBroadcasting(
-        channelName: channelName,
-        isBroadcaster: false,
-      );
+  //   try {
+  //     await _repository.startBroadcasting(
+  //       channelName: channelName,
+  //       isBroadcaster: false,
+  //     );
 
-      // ✅ Create a session so AudienceLiveScreen doesn't show empty state
-      await _repository.createLiveSession(
-        hostName: 'Host',
-        title: channelName,
-        isHost: false,
-        agoraChannelName: channelName,
-      );
+  //     // ✅ Create a session so AudienceLiveScreen doesn't show empty state
+  //     await _repository.createLiveSession(
+  //       hostName: 'Host',
+  //       title: channelName,
+  //       isHost: false,
+  //       agoraChannelName: channelName,
+  //     );
 
-      _currentSession = _repository.currentSession;
-      _setStatus(StreamStatusType.live, 'Connected to stream');
-    } catch (e) {
-      _setError(
-        StreamError(
-          type: StreamErrorType.agoraConnectionFailed,
-          message: 'Failed to join stream',
-          details: e.toString(),
-        ),
-      );
-      _setStatus(StreamStatusType.error, 'Failed to join: ${e.toString()}');
-    }
-    notifyListeners();
-  }
+  //     _currentSession = _repository.currentSession;
+  //     _setStatus(StreamStatusType.live, 'Connected to stream');
+  //   } catch (e) {
+  //     _setError(
+  //       StreamError(
+  //         type: StreamErrorType.agoraConnectionFailed,
+  //         message: 'Failed to join stream',
+  //         details: e.toString(),
+  //       ),
+  //     );
+  //     _setStatus(StreamStatusType.error, 'Failed to join: ${e.toString()}');
+  //   }
+  //   notifyListeners();
+  // }
 
   Future<void> leaveAudience() async {
     await _repository.stopBroadcasting();

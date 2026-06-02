@@ -1,3 +1,4 @@
+import 'package:agora_broadcaster/config/agora_config.dart';
 import 'package:flutter/material.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import '../models/index.dart';
@@ -129,6 +130,7 @@ class AgoraService extends ChangeNotifier {
       notifyListeners();
     }
   }
+  // In AgoraService.startBroadcasting method, update the audience section:
 
   Future<void> startBroadcasting({
     required String channelName,
@@ -146,15 +148,23 @@ class AgoraService extends ChangeNotifier {
                 : ClientRoleType.clientRoleAudience,
       );
 
+      // Always enable video for both broadcaster and audience
+      await _engine!.enableVideo();
+
       if (isBroadcaster) {
         await _enableCameraAndMicrophone();
       } else {
-        // ✅ Audience still needs video module enabled to RENDER remote video
-        await _engine!.enableVideo();
+        // For audience, just enable video but not camera
+        await _engine!.enableLocalVideo(false);
+        await _engine!.enableLocalAudio(false);
       }
 
+      print('🔑 Using token for channel: $channelName');
+      print('🔗 Joining as ${isBroadcaster ? "Broadcaster" : "Audience"}');
+
+      // Use the temporary token from config
       await _engine!.joinChannel(
-        token: '', // Add token for production
+        token: AgoraConfig.tempToken, // 👈 Using your generated token
         channelId: channelName,
         uid: 0,
         options: ChannelMediaOptions(
@@ -162,7 +172,6 @@ class AgoraService extends ChangeNotifier {
           autoSubscribeVideo: true,
           publishCameraTrack: isBroadcaster,
           publishMicrophoneTrack: isBroadcaster,
-          // ✅ Explicitly set role in options too
           clientRoleType:
               isBroadcaster
                   ? ClientRoleType.clientRoleBroadcaster
@@ -170,6 +179,7 @@ class AgoraService extends ChangeNotifier {
         ),
       );
 
+      print('✅ Successfully joined channel: $channelName');
       onConnectionStateChanged?.call('Broadcasting started');
       notifyListeners();
     } catch (e) {

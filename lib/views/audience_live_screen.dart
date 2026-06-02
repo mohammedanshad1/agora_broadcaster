@@ -58,6 +58,7 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
       }
     };
   }
+  // In _AudienceLiveScreenState class, update these methods:
 
   Future<void> _joinStream() async {
     if (!mounted) return;
@@ -80,19 +81,44 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
     }
 
     if (mounted) {
-      // ✅ Host may already be in channel before we joined — check remoteUsers
+      // Wait for engine to fully initialize
+      await Future.delayed(const Duration(milliseconds: 800));
+
+      // Check for existing remote users
       final existing = viewModel.remoteUsers;
       print('Remote users already in channel: $existing');
+
       if (existing.isNotEmpty) {
         final uid = existing.first;
         setState(() {
           _remoteUid = uid;
-          _isVideoReady = true;
+          _isVideoReady =
+              false; // Will be set to true by _ensureRemoteVideoSetup
         });
-        await _setupRemoteVideo(viewModel, uid);
+        await _ensureRemoteVideoSetup(viewModel, uid);
+      } else {
+        setState(() {
+          _isVideoReady = false;
+        });
       }
 
       setState(() => _isJoining = false);
+    }
+  }
+
+  Future<void> _setupRemoteVideo(LiveStreamViewModel viewModel, int uid) async {
+    try {
+      await viewModel.setupRemoteVideo(uid);
+      print('✅ setupRemoteVideo called for uid: $uid');
+
+      if (mounted) {
+        setState(() {
+          _isVideoReady = true;
+        });
+      }
+    } catch (e) {
+      print('🔴 Error setting up remote video: $e');
+      // Don't set _isVideoReady to false here, let _ensureRemoteVideoSetup handle retry
     }
   }
 
@@ -105,14 +131,14 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
     );
   }
 
-  Future<void> _setupRemoteVideo(LiveStreamViewModel viewModel, int uid) async {
-    try {
-      await viewModel.setupRemoteVideo(uid);
-      print('✅ setupRemoteVideo called for uid: $uid');
-    } catch (e) {
-      print('🔴 Error setting up remote video: $e');
-    }
-  }
+  // Future<void> _setupRemoteVideo(LiveStreamViewModel viewModel, int uid) async {
+  //   try {
+  //     await viewModel.setupRemoteVideo(uid);
+  //     print('✅ setupRemoteVideo called for uid: $uid');
+  //   } catch (e) {
+  //     print('🔴 Error setting up remote video: $e');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +250,7 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
         borderRadius: BorderRadius.circular(18),
         child: Stack(
           children: [
-            // ✅ Remote video with correct connection object
+            // Remote video with proper connection object and retry logic
             if (_remoteUid != null &&
                 _isVideoReady &&
                 viewModel.currentSession != null)
@@ -240,6 +266,85 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
                   ),
                 ),
               )
+            else if (_remoteUid != null && viewModel.currentSession != null)
+              // Try to setup video if not ready
+              FutureBuilder<bool>(
+                future: _ensureRemoteVideoSetup(viewModel, _remoteUid!),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Container(
+                      color: Colors.black.withOpacity(0.5),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Setting up video stream...',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Container(
+                      color: Colors.black.withOpacity(0.5),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.red,
+                              size: 48,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Error loading video stream',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Trying to reconnect...',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  return Container(
+                    color: Colors.black.withOpacity(0.5),
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Loading video...',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              )
             else
               Container(
                 color: Colors.black.withOpacity(0.5),
@@ -253,10 +358,17 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
                       const SizedBox(height: 16),
                       Text(
                         _remoteUid != null
-                            ? 'Loading video...'
+                            ? 'Waiting for video stream...'
                             : 'Waiting for host to start streaming...',
                         style: const TextStyle(color: Colors.white70),
                       ),
+                      if (_remoteUid == null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Host will appear when they start broadcasting',
+                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -369,6 +481,50 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
         ),
       ),
     );
+  }
+
+  // Add this helper method to your _AudienceLiveScreenState class
+  Future<bool> _ensureRemoteVideoSetup(
+    LiveStreamViewModel viewModel,
+    int uid,
+  ) async {
+    if (_isVideoReady) return true;
+
+    try {
+      print('🔄 Ensuring remote video setup for uid: $uid');
+
+      // Get the engine and enable video
+      final engine = viewModel.getRtcEngine();
+      await engine.enableVideo();
+
+      // Try setup through viewModel first
+      await viewModel.setupRemoteVideo(uid);
+
+      // Also try direct engine setup as backup
+      await engine.setupRemoteVideo(
+        VideoCanvas(uid: uid, renderMode: RenderModeType.renderModeFit),
+      );
+
+      if (mounted) {
+        setState(() {
+          _isVideoReady = true;
+        });
+      }
+
+      print('✅ Remote video setup successful for uid: $uid');
+      return true;
+    } catch (e) {
+      print('🔴 Remote video setup failed: $e');
+      if (mounted) {
+        // Retry after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted && !_isVideoReady && _remoteUid != null) {
+            _ensureRemoteVideoSetup(viewModel, _remoteUid!);
+          }
+        });
+      }
+      return false;
+    }
   }
 
   Widget _buildAudioControls() {

@@ -89,7 +89,7 @@ class StreamRepository {
 
   List<RTMPStreamConfig> getRtmpConfigs() => _rtmpConfigs;
 
-  // Broadcasting
+  // In stream_repository.dart
   Future<void> startBroadcasting({
     required String channelName,
     required bool isBroadcaster,

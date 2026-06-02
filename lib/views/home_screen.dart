@@ -4,16 +4,14 @@ import 'dart:ui';
 class HomeScreen extends StatefulWidget {
   final Function(bool) onRoleSelected;
 
-  const HomeScreen({
-    super.key,
-    required this.onRoleSelected,
-  });
+  const HomeScreen({super.key, required this.onRoleSelected});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
@@ -45,10 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF2D0060),
-                  Color(0xFF0F0026),
-                ],
+                colors: [Color(0xFF2D0060), Color(0xFF0F0026)],
               ),
             ),
           ),
@@ -157,7 +152,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   title: 'Go Live as Host',
                                   icon: Icons.broadcast_on_home,
                                   gradient: const LinearGradient(
-                                    colors: [Color(0xFFE94057), Color(0xFFF27121)],
+                                    colors: [
+                                      Color(0xFFE94057),
+                                      Color(0xFFF27121),
+                                    ],
                                   ),
                                   onPressed: () => widget.onRoleSelected(true),
                                 ),
@@ -166,7 +164,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                   title: 'Join as Audience',
                                   icon: Icons.people_alt_outlined,
                                   gradient: const LinearGradient(
-                                    colors: [Color(0xFF8A2387), Color(0xFFE94057)],
+                                    colors: [
+                                      Color(0xFF8A2387),
+                                      Color(0xFFE94057),
+                                    ],
                                   ),
                                   onPressed: () => widget.onRoleSelected(false),
                                 ),

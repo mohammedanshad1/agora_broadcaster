@@ -7,7 +7,9 @@ import '../viewmodels/index.dart';
 import 'widgets/index.dart';
 
 class HostLiveScreen extends StatefulWidget {
-  const HostLiveScreen({super.key});
+  final Function() onExit; // ← added just like AudienceLiveScreen
+
+  const HostLiveScreen({super.key, required this.onExit});
 
   @override
   State<HostLiveScreen> createState() => _HostLiveScreenState();
@@ -43,14 +45,25 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
     );
   }
 
-  Widget _buildPreLiveScreen(BuildContext context, LiveStreamViewModel viewModel) {
+  Widget _buildPreLiveScreen(
+    BuildContext context,
+    LiveStreamViewModel viewModel,
+  ) {
     return Scaffold(
+      backgroundColor: const Color(0xFF000000),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Setup Stream', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+        title: const Text(
+          'Setup Stream',
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+        ),
         elevation: 0,
         backgroundColor: Colors.transparent,
         iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: widget.onExit, // ← goes back to HomeScreen safely
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -115,17 +128,35 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: _buildGlassCard(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
                                 child: ListTile(
                                   contentPadding: EdgeInsets.zero,
-                                  title: Text(config.platformName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                  subtitle: Text(config.rtmpUrl, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                  title: Text(
+                                    config.platformName,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    config.rtmpUrl,
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                   trailing: Checkbox(
                                     value: config.enabled,
                                     activeColor: Colors.deepPurpleAccent,
-                                    onChanged: (value) => rtmpVM.toggleConfig(config.id),
+                                    onChanged:
+                                        (value) =>
+                                            rtmpVM.toggleConfig(config.id),
                                   ),
-                                  onLongPress: () => rtmpVM.removeConfig(config.id),
+                                  onLongPress:
+                                      () => rtmpVM.removeConfig(config.id),
                                 ),
                               ),
                             );
@@ -139,12 +170,17 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text('Add RTMP Configuration', style: TextStyle(color: Colors.white)),
+                    label: const Text(
+                      'Add RTMP Configuration',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     onPressed: () => _showRtmpConfigDialog(context),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       side: BorderSide(color: Colors.white.withOpacity(0.3)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
@@ -153,28 +189,47 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
-                    onPressed: viewModel.isInitializing ? null : () => viewModel.startLiveStream(isBroadcaster: true),
+                    onPressed:
+                        viewModel.isInitializing
+                            ? null
+                            : () =>
+                                viewModel.startLiveStream(isBroadcaster: true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.redAccent,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                       elevation: 8,
                       shadowColor: Colors.redAccent.withOpacity(0.5),
                     ),
-                    child: viewModel.isInitializing
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
-                          )
-                        : const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.fiber_manual_record, size: 20),
-                              SizedBox(width: 12),
-                              Text('START LIVE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                            ],
-                          ),
+                    child:
+                        viewModel.isInitializing
+                            ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                            : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.fiber_manual_record, size: 20),
+                                SizedBox(width: 12),
+                                Text(
+                                  'START LIVE',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
                   ),
                 ),
               ],
@@ -189,7 +244,10 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Live Workspace', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+        title: const Text(
+          'Live Workspace',
+          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+        ),
         elevation: 0,
         backgroundColor: Colors.transparent,
         automaticallyImplyLeading: false,
@@ -201,14 +259,25 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
               color: Colors.redAccent,
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
-                BoxShadow(color: Colors.redAccent.withOpacity(0.4), blurRadius: 8, spreadRadius: 1),
+                BoxShadow(
+                  color: Colors.redAccent.withOpacity(0.4),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
               ],
             ),
             child: const Row(
               children: [
                 Icon(Icons.fiber_manual_record, size: 12, color: Colors.white),
                 SizedBox(width: 6),
-                Text('LIVE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                Text(
+                  'LIVE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
               ],
             ),
           ),
@@ -230,7 +299,9 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
               children: [
                 if (viewModel.currentSession != null)
                   _buildGlassCard(
-                    child: LiveStreamStatusWidget(session: viewModel.currentSession!),
+                    child: LiveStreamStatusWidget(
+                      session: viewModel.currentSession!,
+                    ),
                   ),
                 const SizedBox(height: 32),
                 _buildSectionTitle('Stream Status', Icons.analytics_outlined),
@@ -241,13 +312,19 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                       const Icon(Icons.info_outline, color: Colors.blueAccent),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(viewModel.streamStatus.message, style: const TextStyle(color: Colors.white70)),
+                        child: Text(
+                          viewModel.streamStatus.message,
+                          style: const TextStyle(color: Colors.white70),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 32),
-                _buildSectionTitle('Platform Status', Icons.cloud_done_outlined),
+                _buildSectionTitle(
+                  'Platform Status',
+                  Icons.cloud_done_outlined,
+                ),
                 const SizedBox(height: 16),
                 Consumer<RTMPConfigViewModel>(
                   builder: (context, rtmpVM, _) {
@@ -257,26 +334,45 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                         child: const Padding(
                           padding: EdgeInsets.symmetric(vertical: 16),
                           child: Center(
-                            child: Text('No platforms connected', style: TextStyle(color: Colors.white70)),
+                            child: Text(
+                              'No platforms connected',
+                              style: TextStyle(color: Colors.white70),
+                            ),
                           ),
                         ),
                       );
                     }
                     return Column(
-                      children: states.map((state) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildGlassCard(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(state.config.platformName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                              subtitle: Text(state.statusText, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                              leading: _getStatusIcon(state.status),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                      children:
+                          states.map((state) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _buildGlassCard(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    state.config.platformName,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    state.statusText,
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  leading: _getStatusIcon(state.status),
+                                ),
+                              ),
+                            );
+                          }).toList(),
                     );
                   },
                 ),
@@ -289,7 +385,9 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white10,
                       foregroundColor: Colors.redAccent,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                       side: const BorderSide(color: Colors.redAccent, width: 2),
                     ),
                     child: const Row(
@@ -297,7 +395,14 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                       children: [
                         Icon(Icons.stop_circle_outlined, size: 24),
                         SizedBox(width: 12),
-                        Text('END LIVE', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                        Text(
+                          'END LIVE',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -398,13 +503,19 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
               children: [
                 Text(
                   viewModel.lastError!.message,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.redAccent,
+                  ),
                 ),
                 if (viewModel.lastError!.details != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     viewModel.lastError!.details!,
-                    style: TextStyle(fontSize: 12, color: Colors.redAccent.withOpacity(0.8)),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.redAccent.withOpacity(0.8),
+                    ),
                   ),
                 ],
               ],
@@ -421,7 +532,10 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
         return const SizedBox(
           width: 24,
           height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent)),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+          ),
         );
       case RTMPStreamStatus.connected:
         return const Icon(Icons.check_circle, color: Colors.greenAccent);
@@ -445,8 +559,13 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
           builder: (context, setState) {
             return AlertDialog(
               backgroundColor: const Color(0xFF2A2A2A),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: const Text('Add RTMP Config', style: TextStyle(color: Colors.white)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                'Add RTMP Config',
+                style: TextStyle(color: Colors.white),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -455,28 +574,46 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                       value: selectedPlatform,
                       dropdownColor: const Color(0xFF333333),
                       style: const TextStyle(color: Colors.white),
-                      items: ['YouTube', 'Facebook', 'Instagram', 'Twitch']
-                          .map((platform) => DropdownMenuItem(value: platform, child: Text(platform)))
-                          .toList(),
-                      onChanged: (value) => setState(() => selectedPlatform = value ?? 'YouTube'),
+                      items:
+                          ['YouTube', 'Facebook', 'Instagram', 'Twitch']
+                              .map(
+                                (platform) => DropdownMenuItem(
+                                  value: platform,
+                                  child: Text(platform),
+                                ),
+                              )
+                              .toList(),
+                      onChanged:
+                          (value) => setState(
+                            () => selectedPlatform = value ?? 'YouTube',
+                          ),
                       decoration: InputDecoration(
                         labelText: 'Platform',
                         labelStyle: const TextStyle(color: Colors.white54),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.05),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
-                      controller: urlController = TextEditingController(text: 'rtmp://live.example.com/live'),
+                      controller:
+                          urlController = TextEditingController(
+                            text: 'rtmp://live.example.com/live',
+                          ),
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         labelText: 'RTMP URL',
                         labelStyle: const TextStyle(color: Colors.white54),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.05),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -488,7 +625,10 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                         labelStyle: const TextStyle(color: Colors.white54),
                         filled: true,
                         fillColor: Colors.white.withOpacity(0.05),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                       obscureText: true,
                     ),
@@ -498,7 +638,10 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.white54),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -512,9 +655,14 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurpleAccent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  child: const Text('Add', style: TextStyle(color: Colors.white)),
+                  child: const Text(
+                    'Add',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             );
@@ -527,40 +675,63 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
   void _showEndLiveDialog(BuildContext context, LiveStreamViewModel viewModel) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A2A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('End Live?', style: TextStyle(color: Colors.white)),
-        content: const Text('Are you sure you want to end the live stream?', style: TextStyle(color: Colors.white70)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              viewModel.stopLiveStream();
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: const Color(0xFF2A2A2A),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text('End Stream', style: TextStyle(color: Colors.white)),
+            title: const Text(
+              'End Live?',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: const Text(
+              'Are you sure you want to end the live stream?',
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  viewModel.stopLiveStream();
+                  Navigator.pop(context);
+                  widget
+                      .onExit(); // ← go back to HomeScreen after ending stream
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'End Stream',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   StreamPlatform _getPlatform(String name) {
     switch (name) {
-      case 'YouTube': return StreamPlatform.youtube;
-      case 'Facebook': return StreamPlatform.facebook;
-      case 'Instagram': return StreamPlatform.instagram;
-      case 'Twitch': return StreamPlatform.twitch;
-      default: return StreamPlatform.custom;
+      case 'YouTube':
+        return StreamPlatform.youtube;
+      case 'Facebook':
+        return StreamPlatform.facebook;
+      case 'Instagram':
+        return StreamPlatform.instagram;
+      case 'Twitch':
+        return StreamPlatform.twitch;
+      default:
+        return StreamPlatform.custom;
     }
   }
 }

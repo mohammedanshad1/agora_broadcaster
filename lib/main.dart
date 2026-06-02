@@ -121,7 +121,13 @@ class _AppRouterState extends State<_AppRouter> {
     }
 
     if (_isBroadcaster!) {
-      return const HostLiveScreen();
+      return HostLiveScreen(
+        onExit: () {
+          setState(() {
+            _isBroadcaster = null;
+          });
+        },
+      );
     } else {
       return AudienceLiveScreen(
         onExit: () {

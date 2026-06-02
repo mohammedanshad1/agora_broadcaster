@@ -22,8 +22,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Agora Live Broadcaster',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF6200EA),
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
+        fontFamily: 'Inter', // Assuming Inter is available or fallback
       ),
       home: _buildProviders(child: const _AppRouter()),
     );
@@ -91,10 +95,21 @@ class _AppRouter extends StatefulWidget {
 }
 
 class _AppRouterState extends State<_AppRouter> {
+  bool _showSplash = true;
   bool? _isBroadcaster;
 
   @override
   Widget build(BuildContext context) {
+    if (_showSplash) {
+      return SplashScreen(
+        onInitializationComplete: () {
+          setState(() {
+            _showSplash = false;
+          });
+        },
+      );
+    }
+
     if (_isBroadcaster == null) {
       return HomeScreen(
         onRoleSelected: (isBroadcaster) {
@@ -106,7 +121,7 @@ class _AppRouterState extends State<_AppRouter> {
     }
 
     if (_isBroadcaster!) {
-      return HostLiveScreen();
+      return const HostLiveScreen();
     } else {
       return AudienceLiveScreen(
         onExit: () {

@@ -1,5 +1,6 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
 import '../models/index.dart';
@@ -36,14 +37,81 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LiveStreamViewModel>(
-      builder: (context, viewModel, _) {
-        if (viewModel.isLive) {
-          return _buildLiveScreen(context, viewModel);
-        }
-        return _buildPreLiveScreen(context, viewModel);
+    return PopScope(
+      canPop: false, // Prevent default pop behavior
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return;
+        // Handle both back button and swipe gesture
+        await _handleExit(context);
       },
+      child: Consumer<LiveStreamViewModel>(
+        builder: (context, viewModel, _) {
+          if (viewModel.isLive) {
+            return _buildLiveScreen(context, viewModel);
+          }
+          return _buildPreLiveScreen(context, viewModel);
+        },
+      ),
     );
+  }
+
+  Future<void> _handleExit(BuildContext context) async {
+    if (context.mounted) {
+      // If currently live, show confirmation dialog
+      if (context.read<LiveStreamViewModel>().isLive) {
+        final shouldExit =
+            await showDialog<bool>(
+              context: context,
+              builder:
+                  (context) => AlertDialog(
+                    backgroundColor: const Color(0xFF2A2A2A),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    title: const Text(
+                      'Exit Live Stream?',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    content: const Text(
+                      'Your live stream will end if you exit.',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text(
+                          'Stay',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Exit',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+            ) ??
+            false;
+
+        if (shouldExit && context.mounted) {
+          // Stop the stream before exiting
+          await context.read<LiveStreamViewModel>().stopLiveStream();
+          widget.onExit();
+        }
+      } else {
+        // Not live, just exit
+        widget.onExit();
+      }
+    }
   }
 
   Widget _buildPreLiveScreen(
@@ -63,7 +131,7 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-          onPressed: widget.onExit, // ← goes back to HomeScreen safely
+          onPressed: () => _handleExit(context),
         ),
       ),
       body: Container(
@@ -381,12 +449,75 @@ class _HostLiveScreenState extends State<HostLiveScreen> {
               Expanded(
                 flex: 1,
                 child: SingleChildScrollView(
-                  // ... your existing code for status sections
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ... your existing widgets
+                      // Consumer<RTMPStreamService>(
+                      //   builder: (context, rtmpService, _) {
+                      //     return Column(
+                      //       crossAxisAlignment: CrossAxisAlignment.start,
+                      //       children: [
+                      //         const Text(
+                      //           'Stream Status',
+                      //           style: TextStyle(
+                      //             fontSize: 18,
+                      //             fontWeight: FontWeight.bold,
+                      //             color: Colors.white,
+                      //           ),
+                      //         ),
+                      //         const SizedBox(height: 16),
+                      //         ...rtmpService.getActiveStreams().map((stream) {
+                      //           return Padding(
+                      //             padding: const EdgeInsets.only(bottom: 12),
+                      //             child: _buildGlassCard(
+                      //               child: Row(
+                      //                 children: [
+                      //                   _getStatusIcon(stream.status),
+                      //                   const SizedBox(width: 12),
+                      //                   Expanded(
+                      //                     child: Column(
+                      //                       crossAxisAlignment:
+                      //                           CrossAxisAlignment.start,
+                      //                       children: [
+                      //                         Text(
+                      //                           stream.config.platformName,
+                      //                           style: const TextStyle(
+                      //                             color: Colors.white,
+                      //                             fontWeight: FontWeight.bold,
+                      //                           ),
+                      //                         ),
+                      //                         Text(
+                      //                           stream.status ==
+                      //                                   RTMPStreamStatus
+                      //                                       .connected
+                      //                               ? 'Streaming to ${stream.config.platformName}'
+                      //                               : stream.status ==
+                      //                                   RTMPStreamStatus
+                      //                                       .connecting
+                      //                               ? 'Connecting...'
+                      //                               : stream.status ==
+                      //                                   RTMPStreamStatus.failed
+                      //                               ? 'Failed to connect'
+                      //                               : 'Ready',
+                      //                           style: TextStyle(
+                      //                             fontSize: 12,
+                      //                             color: Colors.white
+                      //                                 .withOpacity(0.7),
+                      //                           ),
+                      //                         ),
+                      //                       ],
+                      //                     ),
+                      //                   ),
+                      //                 ],
+                      //               ),
+                      //             ),
+                      //           );
+                      //         }),
+                      //       ],
+                      //     );
+                      //   },
+                      // ),
                       const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,

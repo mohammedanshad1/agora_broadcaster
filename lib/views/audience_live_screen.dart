@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
 import '../viewmodels/index.dart';
@@ -6,10 +7,7 @@ import '../viewmodels/index.dart';
 class AudienceLiveScreen extends StatefulWidget {
   final Function() onExit;
 
-  const AudienceLiveScreen({
-    super.key,
-    required this.onExit,
-  });
+  const AudienceLiveScreen({super.key, required this.onExit});
 
   @override
   State<AudienceLiveScreen> createState() => _AudienceLiveScreenState();
@@ -18,56 +16,114 @@ class AudienceLiveScreen extends StatefulWidget {
 class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text(
-          'Live Stream',
-          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Colors.white),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
-          onPressed: widget.onExit,
-        ),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1E1E1E), // Dark Gray
-              Color(0xFF000000), // Black
-            ],
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) return;
+        await _handleExit(context);
+      },
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          title: const Text(
+            'Live Stream',
+            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          iconTheme: const IconThemeData(color: Colors.white),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new),
+            onPressed: () => _handleExit(context),
           ),
         ),
-        child: SafeArea(
-          child: Consumer<LiveStreamViewModel>(
-            builder: (context, viewModel, _) {
-              if (viewModel.currentSession == null) {
-                return _buildEmptyState();
-              }
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF1E1E1E), // Dark Gray
+                Color(0xFF000000), // Black
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: Consumer<LiveStreamViewModel>(
+              builder: (context, viewModel, _) {
+                if (viewModel.currentSession == null) {
+                  return _buildEmptyState();
+                }
 
-              final session = viewModel.currentSession!;
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildStreamCard(session),
-                    const SizedBox(height: 32),
-                    _buildStatusSection(viewModel.streamStatus.message),
-                  ],
-                ),
-              );
-            },
+                final session = viewModel.currentSession!;
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildStreamCard(session),
+                      const SizedBox(height: 32),
+                      _buildStatusSection(viewModel.streamStatus.message),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _handleExit(BuildContext context) async {
+    if (context.mounted) {
+      final shouldExit =
+          await showDialog<bool>(
+            context: context,
+            builder:
+                (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF2A2A2A),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  title: const Text(
+                    'Exit Stream?',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  content: const Text(
+                    'Are you sure you want to exit the stream?',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text(
+                        'Stay',
+                        style: TextStyle(color: Colors.white54),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurpleAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Exit',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+          ) ??
+          false;
+
+      if (shouldExit && context.mounted) {
+        widget.onExit();
+      }
+    }
   }
 
   Widget _buildEmptyState() {
@@ -128,10 +184,7 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.1),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1,
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,7 +192,10 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.redAccent,
                       borderRadius: BorderRadius.circular(12),
@@ -147,7 +203,11 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.fiber_manual_record, color: Colors.white, size: 12),
+                        Icon(
+                          Icons.fiber_manual_record,
+                          color: Colors.white,
+                          size: 12,
+                        ),
                         SizedBox(width: 4),
                         Text(
                           'LIVE',
@@ -161,7 +221,11 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Icon(Icons.timer_outlined, color: Colors.white.withOpacity(0.7), size: 16),
+                  Icon(
+                    Icons.timer_outlined,
+                    color: Colors.white.withOpacity(0.7),
+                    size: 16,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     _formatDuration(session.duration),
@@ -189,7 +253,9 @@ class _AudienceLiveScreenState extends State<AudienceLiveScreen> {
                     radius: 12,
                     backgroundColor: Colors.deepPurple,
                     child: Text(
-                      session.hostName.isNotEmpty ? session.hostName[0].toUpperCase() : 'H',
+                      session.hostName.isNotEmpty
+                          ? session.hostName[0].toUpperCase()
+                          : 'H',
                       style: const TextStyle(fontSize: 12, color: Colors.white),
                     ),
                   ),
